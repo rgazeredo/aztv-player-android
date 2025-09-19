@@ -324,8 +324,12 @@ class MainActivity : AppCompatActivity() {
         val content = videoList[index]
         currentContentType = content.type
 
-        Log.d(TAG, "Playing content #${index + 1}: ${content.title} (${content.type})")
+        Log.d(TAG, "Playing content #${index + 1}/${videoList.size}: ${content.title} (${content.type})")
         Log.d(TAG, "Content URL: ${content.url}")
+
+        if (content.time != null) {
+            Log.d(TAG, "Content time: ${content.time} seconds")
+        }
 
         when (content.type) {
             "video" -> playVideo(content)
@@ -339,6 +343,10 @@ class MainActivity : AppCompatActivity() {
 
         // Atualizar UI
         updateContentInfo()
+
+        // Resetar flag de transição após carregar conteúdo
+        isTransitioning = false
+        Log.d(TAG, "Content loaded, isTransitioning reset to false")
     }
 
     private fun setupModernWebView() {
@@ -830,7 +838,11 @@ class MainActivity : AppCompatActivity() {
             0 // Loop para o início
         }
 
-        Log.d(TAG, "Moving to next content: $currentVideoIndex -> $nextIndex")
+        Log.d(TAG, "Moving to next content: $currentVideoIndex -> $nextIndex (total items: ${videoList.size})")
+
+        if (nextIndex == 0) {
+            Log.d(TAG, "LOOPING: Reached end of playlist, returning to first item")
+        }
         playContent(nextIndex)
 
         // Timeout para resetar isTransitioning em caso de problema
