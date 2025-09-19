@@ -16,6 +16,8 @@ import android.content.Intent
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.WebChromeClient
+import android.webkit.ConsoleMessage
 import androidx.webkit.WebViewFeature
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebSettingsCompat
@@ -421,9 +423,16 @@ class MainActivity : AppCompatActivity() {
                     super.onPageFinished(view, url)
                     Log.d(TAG, "Modern WebView page finished: $url")
 
+                    // Só mostrar WebView se não for about:blank (limpeza)
+                    if (url != null && url != "about:blank" && currentContentType == "html") {
+                        Log.d(TAG, "Showing WebView after page loaded")
+                        webView.visibility = View.VISIBLE
+                    }
+
                     // Injeção de CSS para forçar layout DESKTOP
                     val css = """
                         javascript:(function() {
+                            try {
                             // Remover meta viewport mobile se existir
                             var viewport = document.querySelector('meta[name="viewport"]');
                             if (viewport) {
@@ -594,6 +603,10 @@ class MainActivity : AppCompatActivity() {
                                     console.log('Forced all elements to be visible with proper display types');
                                 }, 1500);
                             }, 500);
+
+                            } catch (e) {
+                                console.log('CSS injection error: ' + e.message);
+                            }
                         })();
                     """.trimIndent()
 
@@ -609,6 +622,15 @@ class MainActivity : AppCompatActivity() {
                             playNextContent()
                         }
                         handler.postDelayed(htmlTimerRunnable!!, timeInSeconds * 1000L)
+                    } else if (currentContentType == "html") {
+                        // Se não há tempo especificado, usar timeout padrão de segurança
+                        Log.d(TAG, "No time specified for HTML, using default 10 seconds")
+                        htmlTimerRunnable?.let { handler.removeCallbacks(it) }
+                        htmlTimerRunnable = Runnable {
+                            Log.d(TAG, "HTML safety timer expired, moving to next content")
+                            playNextContent()
+                        }
+                        handler.postDelayed(htmlTimerRunnable!!, 10000L) // 10 segundos padrão
                     }
                 }
 
@@ -623,6 +645,29 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
+            // WebChromeClient para capturar erros de JavaScript
+            webView.webChromeClient = object : WebChromeClient() {
+                override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
+                    consoleMessage?.let { msg ->
+                        val level = when (msg.messageLevel()) {
+                            ConsoleMessage.MessageLevel.ERROR -> "ERROR"
+                            ConsoleMessage.MessageLevel.WARNING -> "WARNING"
+                            ConsoleMessage.MessageLevel.LOG -> "LOG"
+                            ConsoleMessage.MessageLevel.DEBUG -> "DEBUG"
+                            ConsoleMessage.MessageLevel.TIP -> "TIP"
+                            else -> "UNKNOWN"
+                        }
+                        Log.d(TAG, "WebView Console [$level]: ${msg.message()} at ${msg.sourceId()}:${msg.lineNumber()}")
+
+                        // Se for erro de JavaScript crítico, continuar mesmo assim
+                        if (msg.messageLevel() == ConsoleMessage.MessageLevel.ERROR) {
+                            Log.w(TAG, "JavaScript error detected but continuing playback")
+                        }
+                    }
+                    return true
+                }
+            }
+
             Log.d(TAG, "Modern WebView setup completed")
 
         } catch (e: Exception) {
@@ -634,10 +679,16 @@ class MainActivity : AppCompatActivity() {
         try {
             Log.d(TAG, "Loading image: ${imageContent.title}")
 
-            // Mostrar ImageView e esconder outros componentes
-            imageView.visibility = View.VISIBLE
-            playerView.visibility = View.GONE
+            // PRIMEIRO: Esconder todos os componentes
             webView.visibility = View.GONE
+            playerView.visibility = View.GONE
+            imageView.visibility = View.GONE
+
+            // Limpar WebView para evitar flash
+            webView.loadUrl("about:blank")
+
+            // Mostrar ImageView após limpeza
+            imageView.visibility = View.VISIBLE
 
             // Parar reprodução de vídeo se estiver ativa
             player.stop()
@@ -724,10 +775,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun playVideo(video: Video) {
         try {
-            // Mostrar player e esconder outros componentes
-            playerView.visibility = View.VISIBLE
+            // PRIMEIRO: Esconder todos os componentes
             webView.visibility = View.GONE
+            playerView.visibility = View.GONE
             imageView.visibility = View.GONE
+
+            // Limpar WebView para evitar flash
+            webView.loadUrl("about:blank")
+
+            // Mostrar player após limpeza
+            playerView.visibility = View.VISIBLE
 
             // Parar reprodução atual
             player.stop()
@@ -758,18 +815,15 @@ class MainActivity : AppCompatActivity() {
         try {
             Log.d(TAG, "Loading HTML with modern Chromium WebView: ${htmlContent.title}")
 
-            // Mostrar WebView e esconder outros componentes
-            webView.visibility = View.VISIBLE
+            // PRIMEIRO: Esconder todos os componentes e carregar nova URL imediatamente
+            webView.visibility = View.GONE
             playerView.visibility = View.GONE
             imageView.visibility = View.GONE
+
             player.stop()
             player.clearMediaItems()
 
-            // Limpar cache para garantir carregamento fresco
-            webView.clearCache(true)
-            webView.clearHistory()
-
-            // Carregar URL com headers modernos e completos (baseado em navegadores reais)
+            // Carregar nova URL IMEDIATAMENTE - sem esperar limpeza
             val headers = mutableMapOf<String, String>()
             headers["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
             headers["Accept-Language"] = "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7"
@@ -785,7 +839,9 @@ class MainActivity : AppCompatActivity() {
             // Armazenar o tempo para configurar timer após página carregar
             currentHtmlTime = htmlContent.time
 
+            // Carregar nova URL imediatamente
             webView.loadUrl(htmlContent.url, headers)
+            Log.d(TAG, "WebView URL loaded, waiting for onPageFinished to show")
 
         } catch (e: Exception) {
             Log.e(TAG, "Error loading HTML ${htmlContent.title}: ${e.message}")
