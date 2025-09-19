@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">AZTVPlayer</string>
+    <string name="download_notification_channel_name">Downloads de Vídeo</string>
+    <string name="download_notification_channel_description">Notificações para downloads de vídeo em background</string>
+</resources>
