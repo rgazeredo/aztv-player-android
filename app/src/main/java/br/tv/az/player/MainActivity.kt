@@ -205,6 +205,13 @@ class MainActivity : AppCompatActivity() {
                         Log.d(TAG, "Video ready to play: $currentVideo")
                         isTransitioning = false
                         consecutiveErrors = 0 // Reset error counter on successful load
+
+                        // Mostrar PlayerView apenas quando vídeo estiver pronto
+                        if (currentContentType == "video") {
+                            Log.d(TAG, "Showing PlayerView - video is ready")
+                            playerView.visibility = View.VISIBLE
+                        }
+
                         // Garantir que o vídeo comece a tocar
                         if (!player.isPlaying && player.playWhenReady) {
                             Log.d(TAG, "Starting playback for: $currentVideo")
@@ -679,7 +686,7 @@ class MainActivity : AppCompatActivity() {
         try {
             Log.d(TAG, "Loading image: ${imageContent.title}")
 
-            // PRIMEIRO: Esconder todos os componentes
+            // PRIMEIRO: Esconder todos os componentes (mantém imagem escondida até carregar)
             webView.visibility = View.GONE
             playerView.visibility = View.GONE
             imageView.visibility = View.GONE
@@ -687,8 +694,7 @@ class MainActivity : AppCompatActivity() {
             // Limpar WebView para evitar flash
             webView.loadUrl("about:blank")
 
-            // Mostrar ImageView após limpeza
-            imageView.visibility = View.VISIBLE
+            // NÃO mostrar ImageView ainda - só quando imagem estiver carregada
 
             // Parar reprodução de vídeo se estiver ativa
             player.stop()
@@ -737,6 +743,10 @@ class MainActivity : AppCompatActivity() {
                                         imageView.setImageBitmap(bitmap)
                                         Log.d(TAG, "Image bitmap set successfully from URL: $url")
 
+                                        // Mostrar ImageView apenas quando imagem estiver carregada
+                                        Log.d(TAG, "Showing ImageView - image is loaded")
+                                        imageView.visibility = View.VISIBLE
+
                                         // Configurar timer para próximo conteúdo após imagem carregada
                                         Log.d(TAG, "Starting timer for ${displayTime / 1000} seconds")
                                         imageTimerRunnable?.let { handler.removeCallbacks(it) }
@@ -775,7 +785,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun playVideo(video: Video) {
         try {
-            // PRIMEIRO: Esconder todos os componentes
+            // PRIMEIRO: Esconder todos os componentes (mantém player escondido até estar pronto)
             webView.visibility = View.GONE
             playerView.visibility = View.GONE
             imageView.visibility = View.GONE
@@ -783,8 +793,7 @@ class MainActivity : AppCompatActivity() {
             // Limpar WebView para evitar flash
             webView.loadUrl("about:blank")
 
-            // Mostrar player após limpeza
-            playerView.visibility = View.VISIBLE
+            // NÃO mostrar player ainda - só quando vídeo estiver pronto
 
             // Parar reprodução atual
             player.stop()
