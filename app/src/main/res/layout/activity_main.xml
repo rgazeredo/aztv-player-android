@@ -17,19 +17,35 @@
         app:resize_mode="fit"
         app:surface_type="surface_view" />
 
-    <!-- WebView para conteúdo HTML -->
+    <!-- WebView principal para conteúdo HTML -->
     <WebView
         android:id="@+id/webView"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- ImageView para exibir imagens -->
+    <!-- WebView secundária para preload -->
+    <WebView
+        android:id="@+id/webViewNext"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
+    <!-- ImageView principal para exibir imagens -->
     <ImageView
         android:id="@+id/imageView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scaleType="centerInside"
         android:background="#000000" />
+
+    <!-- ImageView secundária para preload -->
+    <ImageView
+        android:id="@+id/imageViewNext"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerInside"
+        android:background="#000000"
+        android:visibility="gone" />
 
     <!-- Removido GeckoView -->
 
@@ -46,6 +62,22 @@
         android:textSize="14sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- Indicador de modo offline -->
+    <TextView
+        android:id="@+id/offlineModeIndicator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:background="@drawable/overlay_background"
+        android:padding="8dp"
+        android:text="MODO OFFLINE"
+        android:textColor="#FF9800"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
     <!-- Overlay com informações do vídeo -->
