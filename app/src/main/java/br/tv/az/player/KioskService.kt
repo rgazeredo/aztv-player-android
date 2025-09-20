@@ -108,26 +108,13 @@ class KioskService : Service() {
                         }
                     }
 
-                    // Método alternativo - verificar tarefas recentes (requer API menor)
-                    var hasRecentTask = false
-                    try {
-                        @Suppress("DEPRECATION")
-                        val recentTasks = activityManager.getRunningTasks(1)
-                        if (recentTasks.isNotEmpty()) {
-                            val topTask = recentTasks[0]
-                            hasRecentTask = topTask.topActivity?.packageName == packageName
-                            Log.d(TAG, "🔝 Top task: ${topTask.topActivity?.packageName}, is our app: $hasRecentTask")
-                        }
-                    } catch (e: Exception) {
-                        Log.w(TAG, "⚠️ Could not check running tasks: ${e.message}")
-                    }
 
                     // CORREÇÃO: Como nosso app é HOME launcher, precisamos verificar apenas o FOREGROUND
                     // Se importance != 100 (IMPORTANCE_FOREGROUND), significa que o app não está visível
                     val isReallyForeground = isInForeground && appIsRunning
 
                     if (!isReallyForeground) {
-                        Log.d(TAG, "⚠️ MainActivity not in foreground - restarting (running: $appIsRunning, foreground: $isInForeground, recentTask: $hasRecentTask)")
+                        Log.d(TAG, "⚠️ MainActivity not in foreground - restarting (running: $appIsRunning, foreground: $isInForeground)")
                         startMainActivity()
                     } else {
                         Log.d(TAG, "✅ MainActivity is active and in foreground")

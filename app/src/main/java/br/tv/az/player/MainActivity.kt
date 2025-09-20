@@ -25,9 +25,6 @@ import androidx.webkit.WebViewCompat
 import androidx.webkit.WebSettingsCompat
 import android.widget.ProgressBar
 import android.widget.TextView
-import androidx.browser.customtabs.CustomTabsIntent
-import androidx.browser.customtabs.CustomTabsService
-import androidx.browser.customtabs.CustomTabsServiceConnection
 // Removido imports do GeckoView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -104,8 +101,6 @@ class MainActivity : AppCompatActivity() {
     private var isUsingPrimaryWebView = true
     private var isUsingPrimaryImageView = true
     private var nextContentReady = false
-    private var customTabsServiceConnection: CustomTabsServiceConnection? = null
-    private var customTabsIntent: CustomTabsIntent? = null
 
     private lateinit var cache: SimpleCache
     private lateinit var cacheDataSourceFactory: DataSource.Factory
@@ -148,7 +143,6 @@ class MainActivity : AppCompatActivity() {
         startPeriodicUpdateCheck()
 
         // Inicializar Custom Chrome Tabs
-        setupCustomTabs()
 
         // GeckoView removido por problemas de dependência
     }
@@ -1285,33 +1279,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupCustomTabs() {
-        // Placeholder para futuras melhorias
-        Log.d(TAG, "Custom tabs setup - placeholder")
-    }
-
-    private fun openWithExternalBrowser(url: String): Boolean {
-        return try {
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                data = Uri.parse(url)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-
-            // Verificar se há um navegador disponível
-            val resolveInfo = packageManager.queryIntentActivities(intent, 0)
-            if (resolveInfo.isNotEmpty()) {
-                startActivity(intent)
-                Log.d(TAG, "Opened URL with external browser: $url")
-                return true
-            } else {
-                Log.w(TAG, "No browser app found to open URL: $url")
-                return false
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to open with external browser: ${e.message}")
-            false
-        }
-    }
 
     private fun playNextContent() {
         if (isTransitioning) {
