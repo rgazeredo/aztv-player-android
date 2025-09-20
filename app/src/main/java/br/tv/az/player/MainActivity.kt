@@ -1744,13 +1744,23 @@ class MainActivity : AppCompatActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
+        Log.d(TAG, "🔍 Window focus changed: $hasFocus")
+
         if (hasFocus) {
+            Log.d(TAG, "✅ App gained window focus - enforcing kiosk mode")
             // Reforçar modo imersivo quando a janela ganha foco
             window.decorView.systemUiVisibility = (
                 View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
                 View.SYSTEM_UI_FLAG_FULLSCREEN or
                 View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
             )
+        } else {
+            Log.d(TAG, "⚠️ App lost window focus - user may have left the app")
+            // Notificar o KioskService que perdemos o foco
+            val intent = Intent(this, KioskService::class.java).apply {
+                putExtra("focus_lost", true)
+            }
+            startService(intent)
         }
     }
 }

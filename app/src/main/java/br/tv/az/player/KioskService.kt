@@ -35,6 +35,17 @@ class KioskService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "🚀 KioskService started as foreground service")
 
+        // Verificar se recebemos notificação de perda de foco
+        val focusLost = intent?.getBooleanExtra("focus_lost", false) ?: false
+        if (focusLost) {
+            Log.d(TAG, "📢 Received focus lost notification from MainActivity")
+            // Tentar reativar imediatamente
+            handler.postDelayed({
+                Log.d(TAG, "🔄 Attempting immediate reactivation due to focus loss")
+                startMainActivity()
+            }, 1000) // Aguardar 1 segundo para tentar reativar
+        }
+
         startForeground(NOTIFICATION_ID, createNotification())
         startMainActivityChecker()
 
@@ -111,13 +122,15 @@ class KioskService : Service() {
                         Log.w(TAG, "⚠️ Could not check running tasks: ${e.message}")
                     }
 
-                    val shouldRestart = !appIsRunning || (!isInForeground && !hasRecentTask)
+                    // CORREÇÃO: Como nosso app é HOME launcher, precisamos verificar apenas o FOREGROUND
+                    // Se importance != 100 (IMPORTANCE_FOREGROUND), significa que o app não está visível
+                    val isReallyForeground = isInForeground && appIsRunning
 
-                    if (shouldRestart) {
-                        Log.d(TAG, "⚠️ MainActivity not active (running: $appIsRunning, foreground: $isInForeground, recentTask: $hasRecentTask)")
+                    if (!isReallyForeground) {
+                        Log.d(TAG, "⚠️ MainActivity not in foreground - restarting (running: $appIsRunning, foreground: $isInForeground, recentTask: $hasRecentTask)")
                         startMainActivity()
                     } else {
-                        Log.d(TAG, "✅ MainActivity is active")
+                        Log.d(TAG, "✅ MainActivity is active and in foreground")
                     }
 
                 } catch (e: Exception) {
@@ -141,15 +154,69 @@ class KioskService : Service() {
         try {
             Log.d(TAG, "🎬 Starting MainActivity from service...")
 
+            // Método NOVO: Usar PendingIntent para contornar Background Activity Launch restrictions
             val launchIntent = Intent(this, MainActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 addFlags(Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT)
+                addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
             }
 
-            startActivity(launchIntent)
-            Log.d(TAG, "✅ MainActivity started from service")
+            // Usar PendingIntent para contornar limitações de Android 10+
+            val pendingIntent = PendingIntent.getActivity(
+                this,
+                0,
+                launchIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            try {
+                pendingIntent.send()
+                Log.d(TAG, "✅ PendingIntent sent successfully to bring MainActivity to front")
+            } catch (e: Exception) {
+                Log.w(TAG, "⚠️ PendingIntent failed: ${e.message}")
+                // Fallback para método direto
+                try {
+                    startActivity(launchIntent)
+                    Log.d(TAG, "📱 Fallback: Direct startActivity called")
+                } catch (e2: Exception) {
+                    Log.w(TAG, "⚠️ Direct startActivity also failed: ${e2.message}")
+                }
+            }
+
+            // Método 2: Também tentar através de uma intent HOME (já que somos HOME launcher)
+            try {
+                val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_HOME)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                    setPackage(packageName)
+                }
+
+                val homePendingIntent = PendingIntent.getActivity(
+                    this,
+                    1,
+                    homeIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                homePendingIntent.send()
+                Log.d(TAG, "🏠 HOME PendingIntent sent to activate launcher")
+            } catch (e: Exception) {
+                Log.w(TAG, "⚠️ HOME PendingIntent failed: ${e.message}")
+            }
+
+            // Método 3: Forçar através do ActivityManager
+            try {
+                val activityManager = getSystemService(ACTIVITY_SERVICE) as android.app.ActivityManager
+                activityManager.moveTaskToFront(android.os.Process.myPid(), 0)
+                Log.d(TAG, "📋 Requested task move to front via ActivityManager")
+            } catch (e: Exception) {
+                Log.w(TAG, "⚠️ moveTaskToFront failed: ${e.message}")
+            }
+
+            Log.d(TAG, "✅ All restart methods attempted with PendingIntent bypass")
 
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error starting MainActivity from service: ${e.message}", e)
