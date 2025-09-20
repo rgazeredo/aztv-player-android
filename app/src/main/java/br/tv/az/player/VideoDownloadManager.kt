@@ -403,6 +403,7 @@ class VideoDownloadManager private constructor(private val context: Context) {
                                     fileName.endsWith(".jpeg") || fileName.endsWith(".png") ||
                                     fileName.endsWith(".mp4") || fileName.endsWith(".dat")) {
 
+                                    // Usar o nome do arquivo como ID (que corresponde ao ID da API)
                                     downloadedSet.add(nameWithoutExt)
                                     Log.d(TAG, "${level}  ✅ Added to downloaded set: '$nameWithoutExt' (from file: $fileName)")
                                 } else {

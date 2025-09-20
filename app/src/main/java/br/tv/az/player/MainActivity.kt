@@ -13,6 +13,8 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.ImageView
 import android.content.Intent
+import android.app.KeyguardManager
+import android.os.PowerManager
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -64,7 +66,7 @@ class MainActivity : AppCompatActivity() {
         private const val CONTROLS_TIMEOUT = 3000L // 3 segundos
 //        private const val UPDATE_CHECK_INTERVAL = 5 * 60 * 1000L // 5 minutos
         private const val UPDATE_CHECK_INTERVAL = 1 * 60 * 1000L // 5 minutos
-        private const val FORCE_OFFLINE_MODE = true // TESTE: forçar modo offline
+        private const val FORCE_OFFLINE_MODE = false // TESTE: forçar modo offline
     }
 
     private lateinit var playerView: PlayerView
@@ -122,6 +124,12 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        // Configurações modo kiosk
+        setupKioskMode()
+
+        // Iniciar KioskService para manter app sempre rodando
+        startKioskService()
 
         // Manter tela ligada
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -1680,5 +1688,69 @@ class MainActivity : AppCompatActivity() {
         }
         // Retomar verificações de atualização
         startPeriodicUpdateCheck()
+    }
+
+    private fun setupKioskMode() {
+        Log.d(TAG, "Setting up kiosk mode")
+
+        try {
+            // Configurar tela cheia e imersiva
+            window.setFlags(
+                WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN
+            )
+
+            // Modo imersivo (ocultar barra de navegação e status)
+            window.decorView.systemUiVisibility = (
+                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                View.SYSTEM_UI_FLAG_FULLSCREEN or
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+            )
+
+            // Manter tela sempre ligada
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+            // Desabilitar lock screen se possível
+            try {
+                val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+                val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+                Log.d(TAG, "Keyguard and power manager configured for kiosk mode")
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not configure keyguard/power manager: ${e.message}")
+            }
+
+            Log.d(TAG, "Kiosk mode setup completed")
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting up kiosk mode: ${e.message}", e)
+        }
+    }
+
+    private fun startKioskService() {
+        try {
+            Log.d(TAG, "🔧 Starting KioskService...")
+            val kioskServiceIntent = Intent(this, KioskService::class.java)
+            startService(kioskServiceIntent)
+            Log.d(TAG, "✅ KioskService started successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error starting KioskService: ${e.message}", e)
+        }
+    }
+
+    override fun onBackPressed() {
+        // Desabilitar botão back no modo kiosk
+        Log.d(TAG, "Back button disabled in kiosk mode")
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            // Reforçar modo imersivo quando a janela ganha foco
+            window.decorView.systemUiVisibility = (
+                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                View.SYSTEM_UI_FLAG_FULLSCREEN or
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+            )
+        }
     }
 }
